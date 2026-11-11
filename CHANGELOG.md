@@ -4,6 +4,25 @@ All notable changes to MeshRAG are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.1] — 2026-11-11
+
+WebUI adaptation for the v1.3.0 backend changes.
+
+### Added
+
+- Graph view: file filter dropdown next to the label selector, backed by
+  the `/graphs` `file_path` parameter and the `file_paths` response
+  field; hidden while the KB has fewer than two processed documents.
+- Translated strings for all new UI surfaces across the 11 supported
+  locales.
+
+### Changed
+
+- Upload/insert dialogs now present `already_processed` and
+  `processing` upload outcomes as per-file notices (with the batch
+  toast staying a success) instead of surfacing the raw backend
+  message as an error.
+
 ## [1.3.0] — 2026-11-11
 
 Upload deduplication refinement, graph filtering by document, and a
