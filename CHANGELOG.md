@@ -4,6 +4,42 @@ All notable changes to MeshRAG are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0] — 2026-11-11
+
+Upload deduplication refinement, graph filtering by document, and a
+models introspection endpoint, synced from the upstream LightRAG
+deployment.
+
+### Added
+
+- `POST /documents/upload` accepts `force=true` to skip all dedup
+  gates and re-enqueue with `overwrite=true` (re-parse in place).
+- `InsertResponse` gains `already_processed` and `processing`
+  statuses: re-uploading an identical file reports its previous state
+  instead of a misleading `duplicated`.
+- `GET /graphs` accepts `file_path` to scope the graph to one document;
+  NetworkX pre-filters before `max_nodes` truncation and the response
+  carries `file_paths` (all processed documents of the KB, for the
+  file picker). Backends without pre-filter support fall back to
+  post-filtering with a warning.
+- `GET /models` reports the effective LLM and embedding
+  binding/model/host (plus embedding dim / max_token_size), resolving
+  provider-signature defaults when `EMBEDDING_MODEL` is unset. No
+  `api_key` is exposed.
+
+### Changed
+
+- Same-name upload gate now defers to the content pre-check: same name
+  + same content is `already_processed`/`processing`; same name with
+  changed content stays `duplicated`.
+- `overwrite` no longer deletes the same-name old document up front;
+  deletion is deferred until all synchronous validations pass so a
+  failed upload cannot lose the old content.
+- `get_doc_by_file_path` / `get_doc_id_by_file_path` select an
+  authoritative record (processed > in-flight > failed, newest
+  `updated_at` wins ties) across JSON/Redis/PostgreSQL/MongoDB
+  doc-status stores.
+
 ## [1.2.0] — 2026-10-26
 
 Ollama thinking-mode control, synced from the upstream LightRAG deployment.
