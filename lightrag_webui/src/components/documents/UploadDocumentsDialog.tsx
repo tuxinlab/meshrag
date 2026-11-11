@@ -88,6 +88,9 @@ export default function UploadDocumentsDialog({
       try {
         // Track errors locally to ensure we have the final state
         const uploadErrors: Record<string, string> = {}
+        // Informational outcomes (already_processed / processing) shown per file
+        // but not counted as batch failures
+        const uploadNotices: Record<string, string> = {}
 
         // Create a collator that supports Chinese sorting
         const collator = new Intl.Collator(['zh-CN', 'en'], {
@@ -126,6 +129,28 @@ export default function UploadDocumentsDialog({
               setFileErrors(prev => ({
                 ...prev,
                 [file.name]: duplicateMsg
+              }))
+            } else if (result.status === 'already_processed') {
+              // Same name + same content: nothing to do, surface as a notice
+              const noticeMsg = result.original_file_path
+                ? t('documentPanel.uploadDocuments.fileUploader.alreadyProcessedOf', {
+                  path: result.original_file_path
+                })
+                : t('documentPanel.uploadDocuments.fileUploader.alreadyProcessed')
+              uploadNotices[file.name] = noticeMsg
+              setProgresses((pre) => ({ ...pre, [file.name]: 100 }))
+              setFileErrors(prev => ({
+                ...prev,
+                [file.name]: noticeMsg
+              }))
+            } else if (result.status === 'processing') {
+              // Same name is still in flight: surface as a notice
+              const noticeMsg = t('documentPanel.uploadDocuments.fileUploader.processing')
+              uploadNotices[file.name] = noticeMsg
+              setProgresses((pre) => ({ ...pre, [file.name]: 100 }))
+              setFileErrors(prev => ({
+                ...prev,
+                [file.name]: noticeMsg
               }))
             } else if (result.status !== 'success') {
               uploadErrors[file.name] = result.message
@@ -177,8 +202,9 @@ export default function UploadDocumentsDialog({
           toast.success(t('documentPanel.uploadDocuments.batch.success'), { id: toastId })
         }
 
-        // Only update if at least one file was uploaded successfully
-        if (hasSuccessfulUpload) {
+        // Only update if at least one file was uploaded successfully,
+        // or reported as already processed / still processing (list may change)
+        if (hasSuccessfulUpload || Object.keys(uploadNotices).length > 0) {
           // Refresh document list
           if (onDocumentsUploaded) {
             onDocumentsUploaded().catch(err => {

@@ -86,6 +86,10 @@ interface SettingsState {
   queryLabel: string
   setQueryLabel: (queryLabel: string) => void
 
+  // Graph view file filter ('' = whole knowledge base)
+  graphFileFilter: string
+  setGraphFileFilter: (filePath: string) => void
+
   retrievalHistory: Message[]
   setRetrievalHistory: (history: Message[]) => void
 
@@ -153,6 +157,7 @@ const useSettingsStoreBase = create<SettingsState>()(
       graphLayoutMaxIterations: 15,
 
       queryLabel: defaultQueryLabel,
+      graphFileFilter: '',
 
       enableHealthCheck: true,
 
@@ -226,6 +231,8 @@ const useSettingsStoreBase = create<SettingsState>()(
         set({
           queryLabel
         }),
+
+      setGraphFileFilter: (filePath: string) => set({ graphFileFilter: filePath }),
 
       setGraphQueryMaxDepth: (depth: number) => set({ graphQueryMaxDepth: depth }),
 

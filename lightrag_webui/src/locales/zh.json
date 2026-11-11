@@ -148,7 +148,10 @@
         "uploadDescription": "您可以上传{{isMultiple ? '多个' : count}}个文件（每个文件最大{{maxSize}}）",
         "duplicateFile": "文件名与服务器上的缓存重复",
         "duplicateFileOf": "内容与 {{path}} 重复",
-        "invalidFileName": "文件名无效"
+        "invalidFileName": "文件名无效",
+        "alreadyProcessed": "已处理过（内容相同），未重复上传",
+        "alreadyProcessedOf": "已处理过——与「{{path}}」内容相同，未重复上传",
+        "processing": "同名文档仍在解析中，请稍后查看"
       },
       "overwrite": "覆盖同名来源的已有文档"
     },
@@ -479,6 +482,10 @@
       "merging": "合并中",
       "confirm": "合并",
       "success": "已合并 {{count}} 个实体"
+    },
+    "graphFileFilter": {
+      "placeholder": "按文档筛选图谱",
+      "allFiles": "全部文档"
     }
   },
   "retrievePanel": {

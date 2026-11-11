@@ -147,7 +147,10 @@
         "uploadDescription": "Vous pouvez télécharger {{isMultiple ? 'plusieurs' : count}} fichiers (jusqu'à {{maxSize}} chacun)",
         "duplicateFile": "Le nom du fichier existe déjà dans le cache du serveur",
         "duplicateFileOf": "Même contenu que {{path}}",
-        "invalidFileName": "Nom de fichier invalide"
+        "invalidFileName": "Nom de fichier invalide",
+        "alreadyProcessed": "Déjà traité (contenu identique) — non téléversé à nouveau",
+        "alreadyProcessedOf": "Déjà traité — contenu identique à « {{path}} », non téléversé à nouveau",
+        "processing": "Un document du même nom est encore en cours de traitement — revenez plus tard"
       },
       "overwrite": "Remplacer le document existant par la même source de fichier"
     },
@@ -478,6 +481,10 @@
       "merging": "Fusion en cours",
       "confirm": "Fusionner",
       "success": "{{count}} entités fusionnées"
+    },
+    "graphFileFilter": {
+      "placeholder": "Filtrer le graphe par document",
+      "allFiles": "Tous les documents"
     }
   },
   "retrievePanel": {

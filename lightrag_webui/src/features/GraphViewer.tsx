@@ -16,6 +16,7 @@ import Settings from '@/components/graph/Settings'
 import GraphEditControls from '@/components/graph/GraphEditControls'
 import GraphSearch from '@/components/graph/GraphSearch'
 import GraphLabels from '@/components/graph/GraphLabels'
+import GraphFileFilter from '@/components/graph/GraphFileFilter'
 import PropertiesView from '@/components/graph/PropertiesView'
 import SettingsDisplay from '@/components/graph/SettingsDisplay'
 import Legend from '@/components/graph/Legend'
@@ -207,6 +208,7 @@ const GraphViewer = () => {
 
         <div className="absolute top-2 left-2 flex items-start gap-2">
           <GraphLabels />
+          <GraphFileFilter />
           {showNodeSearchBar && !isThemeSwitching && (
             <GraphSearch
               value={searchInitSelectedNode}

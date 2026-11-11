@@ -147,7 +147,10 @@
         "uploadDescription": "您可以上傳{{isMultiple ? '多個' : count}}個檔案（每個檔案最大{{maxSize}}）",
         "duplicateFile": "檔案名稱與伺服器上的快取重複",
         "duplicateFileOf": "與 {{path}} 內容相同",
-        "invalidFileName": "無效的檔案名稱"
+        "invalidFileName": "無效的檔案名稱",
+        "alreadyProcessed": "已處理過（內容相同），未重複上傳",
+        "alreadyProcessedOf": "已處理過——與「{{path}}」內容相同，未重複上傳",
+        "processing": "同名文件仍在解析中，請稍後查看"
       },
       "overwrite": "取代來源相同的現有文件"
     },
@@ -478,6 +481,10 @@
       "merging": "合併中",
       "confirm": "合併",
       "success": "已合併 {{count}} 個實體"
+    },
+    "graphFileFilter": {
+      "placeholder": "依文件篩選圖譜",
+      "allFiles": "全部文件"
     }
   },
   "retrievePanel": {

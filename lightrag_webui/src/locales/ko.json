@@ -147,7 +147,10 @@
         "uploadDescription": "{{isMultiple ? '여러' : count}}개의 파일을 업로드할 수 있습니다 (각 최대 {{maxSize}})",
         "duplicateFile": "파일 이름이 서버 캐시에 이미 존재합니다",
         "duplicateFileOf": "{{path}}와 동일한 내용입니다",
-        "invalidFileName": "잘못된 파일 이름입니다"
+        "invalidFileName": "잘못된 파일 이름입니다",
+        "alreadyProcessed": "이미 처리되었습니다(동일한 내용) — 다시 업로드하지 않았습니다",
+        "alreadyProcessedOf": "이미 처리되었습니다 — '{{path}}'와(과) 내용이 동일하여 다시 업로드하지 않았습니다",
+        "processing": "같은 이름의 문서가 아직 처리 중입니다 — 나중에 다시 확인해 주세요"
       },
       "overwrite": "동일한 파일 소스의 기존 문서를 교체합니다"
     },
@@ -478,6 +481,10 @@
       "merging": "병합 중",
       "confirm": "병합",
       "success": "{{count}}개 엔티티가 병합되었습니다"
+    },
+    "graphFileFilter": {
+      "placeholder": "문서로 그래프 필터링",
+      "allFiles": "모든 문서"
     }
   },
   "retrievePanel": {

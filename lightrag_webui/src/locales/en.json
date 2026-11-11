@@ -148,7 +148,10 @@
         "uploadDescription": "You can upload {{isMultiple ? 'multiple' : count}} files (up to {{maxSize}} each)",
         "duplicateFile": "File name already exists in server cache",
         "duplicateFileOf": "Same content as {{path}}",
-        "invalidFileName": "Invalid file name"
+        "invalidFileName": "Invalid file name",
+        "alreadyProcessed": "Already processed (identical content) — not uploaded again",
+        "alreadyProcessedOf": "Already processed — identical content of '{{path}}', not uploaded again",
+        "processing": "A document with this name is still processing — check back later"
       },
       "overwrite": "Replace the existing document with the same file source"
     },
@@ -479,6 +482,10 @@
       "merging": "Merging",
       "confirm": "Merge",
       "success": "{{count}} entities merged"
+    },
+    "graphFileFilter": {
+      "placeholder": "Filter graph by document",
+      "allFiles": "All documents"
     }
   },
   "retrievePanel": {

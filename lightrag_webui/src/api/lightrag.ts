@@ -23,6 +23,8 @@ export type LightragEdgeType = {
 export type LightragGraphType = {
   nodes: LightragNodeType[]
   edges: LightragEdgeType[]
+  /** All processed documents of the knowledge base, for the file filter picker. */
+  file_paths?: string[]
 }
 
 export type LightragStatus = {
@@ -297,7 +299,15 @@ export type EntityUpdateResponse = {
 }
 
 export type DocActionResponse = {
-  status: 'success' | 'partial_success' | 'failure' | 'duplicated'
+  status:
+    | 'success'
+    | 'partial_success'
+    | 'failure'
+    | 'duplicated'
+    /** Same file name + same content is already processed — nothing to do. */
+    | 'already_processed'
+    /** Same file name is still being processed — check back later. */
+    | 'processing'
   message: string
   track_id?: string
   /** Existing document id reported when the inserted content duplicates an indexed document. */
@@ -762,13 +772,15 @@ axiosInstance.interceptors.response.use(
 export const queryGraphs = async (
   label: string,
   maxDepth: number,
-  maxNodes: number
+  maxNodes: number,
+  filePath?: string
 ): Promise<LightragGraphType> => {
   const response = await axiosInstance.get('/graphs', {
     params: withKbQueryParam({
       label,
       max_depth: maxDepth,
-      max_nodes: maxNodes
+      max_nodes: maxNodes,
+      ...(filePath ? { file_path: filePath } : {})
     })
   })
   return response.data

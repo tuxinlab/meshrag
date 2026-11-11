@@ -147,7 +147,10 @@
         "uploadDescription": "Sie können {{isMultiple ? 'mehrere' : count}} Dateien hochladen (bis zu {{maxSize}} pro Datei)",
         "duplicateFile": "Dateiname existiert bereits im Server-Cache",
         "duplicateFileOf": "Gleicher Inhalt wie {{path}}",
-        "invalidFileName": "Ungültiger Dateiname"
+        "invalidFileName": "Ungültiger Dateiname",
+        "alreadyProcessed": "Bereits verarbeitet (identischer Inhalt) — nicht erneut hochgeladen",
+        "alreadyProcessedOf": "Bereits verarbeitet — Inhalt identisch mit „{{path}}“, nicht erneut hochgeladen",
+        "processing": "Ein Dokument mit diesem Namen wird noch verarbeitet — bitte später erneut prüfen"
       },
       "overwrite": "Vorhandenes Dokument mit gleicher Dateiquelle ersetzen"
     },
@@ -478,6 +481,10 @@
       "merging": "Zusammenführen",
       "confirm": "Zusammenführen",
       "success": "{{count}} Entitäten zusammengeführt"
+    },
+    "graphFileFilter": {
+      "placeholder": "Graph nach Dokument filtern",
+      "allFiles": "Alle Dokumente"
     }
   },
   "retrievePanel": {

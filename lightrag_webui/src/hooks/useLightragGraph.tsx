@@ -90,7 +90,12 @@ export type EdgeType = {
   hidden?: boolean
 }
 
-const fetchGraph = async (label: string, maxDepth: number, maxNodes: number) => {
+const fetchGraph = async (
+  label: string,
+  maxDepth: number,
+  maxNodes: number,
+  filePath?: string
+) => {
   let rawData: any = null;
 
   // Trigger GraphLabels component to check if the label is valid
@@ -101,8 +106,8 @@ const fetchGraph = async (label: string, maxDepth: number, maxNodes: number) => 
   const queryLabel = label || '*';
 
   try {
-    console.log(`Fetching graph label: ${queryLabel}, depth: ${maxDepth}, nodes: ${maxNodes}`);
-    rawData = await queryGraphs(queryLabel, maxDepth, maxNodes);
+    console.log(`Fetching graph label: ${queryLabel}, depth: ${maxDepth}, nodes: ${maxNodes}, file: ${filePath ?? '(all)'}`);
+    rawData = await queryGraphs(queryLabel, maxDepth, maxNodes, filePath || undefined);
   } catch (e) {
     useBackendState.getState().setErrorMessage(errorMessage(e), 'Query Graphs Error!');
     return null;
@@ -179,7 +184,11 @@ const fetchGraph = async (label: string, maxDepth: number, maxNodes: number) => 
   }
 
   // console.debug({ data: JSON.parse(JSON.stringify(rawData)) })
-  return { rawGraph, is_truncated: rawData.is_truncated }
+  return {
+    rawGraph,
+    is_truncated: rawData.is_truncated,
+    filePaths: Array.isArray(rawData.file_paths) ? rawData.file_paths : []
+  }
 }
 
 // Create a new graph instance with the raw graph data
@@ -265,6 +274,7 @@ const useLightrangeGraph = () => {
   const sigmaGraph = useGraphStore.use.sigmaGraph()
   const maxQueryDepth = useSettingsStore.use.graphQueryMaxDepth()
   const maxNodes = useSettingsStore.use.graphMaxNodes()
+  const graphFileFilter = useSettingsStore.use.graphFileFilter()
   const isFetching = useGraphStore.use.isFetching()
   const nodeToExpand = useGraphStore.use.nodeToExpand()
   const nodeToPrune = useGraphStore.use.nodeToPrune()
@@ -348,10 +358,12 @@ const useLightrangeGraph = () => {
       // on its own; a genuinely empty knowledge base still resolves to the empty state.
       const effectiveLabel = currentQueryLabel || '*'
 
-      // Declare a variable to store data promise
-      let dataPromise: Promise<{ rawGraph: RawGraph | null; is_truncated: boolean | undefined } | null>;
-
-      dataPromise = fetchGraph(effectiveLabel, currentMaxQueryDepth, currentMaxNodes);
+      const dataPromise = fetchGraph(
+        effectiveLabel,
+        currentMaxQueryDepth,
+        currentMaxNodes,
+        graphFileFilter || undefined
+      );
 
       // 3. Process data
       dataPromise.then((result) => {
@@ -373,6 +385,9 @@ const useLightrangeGraph = () => {
 
         // Reset state
         state.reset()
+
+        // Publish the KB's processed file list for the file filter dropdown
+        state.setGraphFilePaths(result?.filePaths ?? [])
 
         // Check if data is empty or invalid
         if (!data || !data.nodes || data.nodes.length === 0) {
@@ -459,7 +474,7 @@ const useLightrangeGraph = () => {
         state.setLastSuccessfulQueryLabel('') // Clear last successful query label on error
       })
     }
-  }, [queryLabel, maxQueryDepth, maxNodes, isFetching, t, graphDataVersion])
+  }, [queryLabel, maxQueryDepth, maxNodes, graphFileFilter, isFetching, t, graphDataVersion])
 
   // Handle node expansion
   useEffect(() => {

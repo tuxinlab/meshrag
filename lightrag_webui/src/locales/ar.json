@@ -147,7 +147,10 @@
         "uploadDescription": "يمكنك رفع {{isMultiple ? 'عدة' : count}} ملفات (حتى {{maxSize}} لكل منها)",
         "duplicateFile": "اسم الملف موجود بالفعل في ذاكرة التخزين المؤقت للخادم",
         "duplicateFileOf": "نفس المحتوى مثل {{path}}",
-        "invalidFileName": "اسم الملف غير صالح"
+        "invalidFileName": "اسم الملف غير صالح",
+        "alreadyProcessed": "تمت معالجته مسبقًا (محتوى متطابق) — لم يُعَد رفعه",
+        "alreadyProcessedOf": "تمت معالجته مسبقًا — المحتوى مطابق لـ«{{path}}»، لم يُعَد رفعه",
+        "processing": "ما زالت معالجة المستند الذي يحمل الاسم نفسه جارية — تحقق لاحقًا"
       },
       "overwrite": "استبدل الوثيقة الموجودة بنفس مصدر الملف"
     },
@@ -478,6 +481,10 @@
       "merging": "جاري الدمج",
       "confirm": "دمج",
       "success": "تم دمج {{count}} كيانات"
+    },
+    "graphFileFilter": {
+      "placeholder": "تصفية الرسم البياني حسب المستند",
+      "allFiles": "جميع المستندات"
     }
   },
   "retrievePanel": {

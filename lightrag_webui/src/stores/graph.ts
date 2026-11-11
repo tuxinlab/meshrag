@@ -92,6 +92,10 @@ interface GraphState {
   graphIsEmpty: boolean
   lastSuccessfulQueryLabel: string
 
+  /** All processed documents of the current KB, from the last /graphs response. */
+  graphFilePaths: string[]
+  setGraphFilePaths: (paths: string[]) => void
+
   typeColorMap: Map<string, string>
 
   // Global flags to track data fetching attempts
@@ -152,6 +156,7 @@ const useGraphStoreBase = create<GraphState>()((set, get) => ({
   isFetching: false,
   graphIsEmpty: false,
   lastSuccessfulQueryLabel: '', // Initialize as empty to ensure fetchAllDatabaseLabels runs on first query
+  graphFilePaths: [],
 
   // Initialize global flags
   graphDataFetchAttempted: false,
@@ -167,6 +172,7 @@ const useGraphStoreBase = create<GraphState>()((set, get) => ({
 
   setGraphIsEmpty: (isEmpty: boolean) => set({ graphIsEmpty: isEmpty }),
   setLastSuccessfulQueryLabel: (label: string) => set({ lastSuccessfulQueryLabel: label }),
+  setGraphFilePaths: (paths: string[]) => set({ graphFilePaths: paths }),
 
 
   setIsFetching: (isFetching: boolean) => set({ isFetching }),
@@ -192,7 +198,8 @@ const useGraphStoreBase = create<GraphState>()((set, get) => ({
       sigmaGraph: null,  // to avoid other components from acccessing graph objects
       searchEngine: null,
       moveToSelectedNode: false,
-      graphIsEmpty: false
+      graphIsEmpty: false,
+      graphFilePaths: []
     });
   },
 

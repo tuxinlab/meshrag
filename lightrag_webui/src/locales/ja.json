@@ -147,7 +147,10 @@
         "uploadDescription": "{{isMultiple ? '複数' : count}}個のファイルをアップロードできます（それぞれ最大{{maxSize}}まで）",
         "duplicateFile": "ファイル名がサーバーキャッシュに既に存在します",
         "duplicateFileOf": "{{path}} と同じ内容です",
-        "invalidFileName": "無効なファイル名です"
+        "invalidFileName": "無効なファイル名です",
+        "alreadyProcessed": "処理済みです（内容が同一のため、再アップロードは不要です）",
+        "alreadyProcessedOf": "処理済みです——「{{path}}」と内容が同一のため、再アップロードされませんでした",
+        "processing": "同じ名前のドキュメントはまだ処理中です。後でもう一度ご確認ください"
       },
       "overwrite": "同じファイルソースの既存ドキュメントを置き換える"
     },
@@ -478,6 +481,10 @@
       "merging": "マージ中",
       "confirm": "マージ",
       "success": "{{count}} 個のエンティティをマージしました"
+    },
+    "graphFileFilter": {
+      "placeholder": "ドキュメントでグラフを絞り込み",
+      "allFiles": "すべてのドキュメント"
     }
   },
   "retrievePanel": {

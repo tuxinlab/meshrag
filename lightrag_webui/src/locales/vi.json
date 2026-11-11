@@ -147,7 +147,10 @@
         "uploadDescription": "Bạn có thể tải lên {{isMultiple ? 'nhiều' : count}} tệp (tối đa {{maxSize}} mỗi tệp)",
         "duplicateFile": "Tên tệp đã tồn tại trong bộ nhớ cache của máy chủ",
         "duplicateFileOf": "Nội dung giống như {{path}}",
-        "invalidFileName": "Tên tệp không hợp lệ"
+        "invalidFileName": "Tên tệp không hợp lệ",
+        "alreadyProcessed": "Đã xử lý rồi (nội dung giống hệt) — không tải lên lại",
+        "alreadyProcessedOf": "Đã xử lý rồi — nội dung giống «{{path}}», không tải lên lại",
+        "processing": "Tài liệu cùng tên vẫn đang được xử lý — vui lòng kiểm tra lại sau"
       },
       "overwrite": "Thay thế tài liệu hiện có bằng tệp cùng nguồn"
     },
@@ -478,6 +481,10 @@
       "merging": "Đang gộp",
       "confirm": "Gộp",
       "success": "Đã gộp {{count}} thực thể"
+    },
+    "graphFileFilter": {
+      "placeholder": "Lọc đồ thị theo tài liệu",
+      "allFiles": "Tất cả tài liệu"
     }
   },
   "retrievePanel": {

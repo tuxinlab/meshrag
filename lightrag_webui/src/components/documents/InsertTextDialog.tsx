@@ -54,6 +54,10 @@ export default function InsertTextDialog({
         toast.warning(result.original_file_path
           ? t('documentPanel.uploadDocuments.fileUploader.duplicateFileOf', { path: result.original_file_path })
           : t('documentPanel.uploadDocuments.fileUploader.duplicateFile'))
+      } else if (result.status === 'already_processed') {
+        toast.info(t('documentPanel.uploadDocuments.fileUploader.alreadyProcessed'))
+      } else if (result.status === 'processing') {
+        toast.info(t('documentPanel.uploadDocuments.fileUploader.processing'))
       } else if (result.status !== 'success') {
         toast.error(result.message)
       } else {
