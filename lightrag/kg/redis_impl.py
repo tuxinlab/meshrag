@@ -20,6 +20,7 @@ from lightrag.base import (
     DocStatusStorage,
     DocStatus,
     DocProcessingStatus,
+    select_authoritative_doc,
 )
 from ..kg.shared_storage import get_data_init_lock
 import json
@@ -1052,6 +1053,7 @@ class RedisDocStatusStorage(DocStatusStorage):
         """
         async with self._get_redis_connection() as redis:
             try:
+                matches: list[dict[str, Any]] = []
                 # Use SCAN to iterate through all keys in the namespace
                 cursor = 0
                 while True:
@@ -1071,7 +1073,7 @@ class RedisDocStatusStorage(DocStatusStorage):
                                 try:
                                     doc_data = json.loads(value)
                                     if doc_data.get("file_path") == file_path:
-                                        return doc_data
+                                        matches.append(doc_data)
                                 except json.JSONDecodeError as e:
                                     logger.error(
                                         f"[{self.workspace}] JSON decode error in get_doc_by_file_path: {e}"
@@ -1081,7 +1083,8 @@ class RedisDocStatusStorage(DocStatusStorage):
                     if cursor == 0:
                         break
 
-                return None
+                # 同一 file_path 可能有多条记录，返回最权威的一条
+                return select_authoritative_doc(matches)
             except Exception as e:
                 logger.error(f"[{self.workspace}] Error in get_doc_by_file_path: {e}")
                 return None
@@ -1097,6 +1100,7 @@ class RedisDocStatusStorage(DocStatusStorage):
         """
         async with self._get_redis_connection() as redis:
             try:
+                matches: list[tuple[str, dict[str, Any]]] = []
                 cursor = 0
                 while True:
                     cursor, keys = await redis.scan(
@@ -1118,12 +1122,22 @@ class RedisDocStatusStorage(DocStatusStorage):
                                             .decode()
                                             .replace(f"{self.final_namespace}:", "")
                                         )
-                                        return doc_id
+                                        matches.append((doc_id, doc_data))
                                 except json.JSONDecodeError:
                                     continue
 
                     if cursor == 0:
                         break
+
+                # 与 get_doc_by_file_path 保持同一权威记录口径
+                authoritative = select_authoritative_doc(
+                    [doc_data for _, doc_data in matches]
+                )
+                if authoritative is None:
+                    return None
+                for doc_id, doc_data in matches:
+                    if doc_data is authoritative:
+                        return doc_id
 
             except Exception as e:
                 logger.error(

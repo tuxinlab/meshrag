@@ -280,14 +280,20 @@ class InsertResponse(BaseModel):
     """Response model for document insertion operations
 
     Attributes:
-        status: Status of the operation (success, duplicated, partial_success, failure)
+        status: Status of the operation (success, duplicated, partial_success,
+            failure, already_processed, processing)
         message: Detailed message describing the operation result
         track_id: Tracking ID for monitoring processing status
     """
 
-    status: Literal["success", "duplicated", "partial_success", "failure"] = Field(
-        description="Status of the operation"
-    )
+    status: Literal[
+        "success",
+        "duplicated",
+        "partial_success",
+        "failure",
+        "already_processed",
+        "processing",
+    ] = Field(description="Status of the operation")
     message: str = Field(description="Message describing the operation result")
     track_id: str = Field(description="Tracking ID for monitoring processing status")
     doc_id: Optional[str] = Field(
@@ -1551,64 +1557,156 @@ async def _extract_text_from_file(file_path: Path) -> Optional[str]:
 
 
 async def _check_content_duplicate(
-    rag: LightRAG, file_path: Path
+    rag: LightRAG,
+    file_path: Path,
+    same_name_existing: Optional[dict[str, Any]] = None,
 ) -> Optional[InsertResponse]:
     """upload 同步内容预检。
 
-    若文件内容（按 doc_id）已存在于 doc_status，返回 ``duplicated`` 响应
-    （含 doc_id 与原文件名）；否则返回 None（放行入队）。
+    若文件内容（按 doc_id）已存在于 doc_status，按记录归属返回对应响应：
 
-    - 内容重复一律返回 duplicated，忽略 overwrite（不允许覆盖同内容）。
+    - failed 记录（无论同名与否）→ None（放行重新解析）。
+    - 同名记录（existing.file_path == 本次文件名）视为“自己”的旧状态：
+      processed → ``already_processed``；pending/processing/preprocessed →
+      ``processing``。
+    - 不同名记录视为真正的跨文件内容重复 → ``duplicated``。
+    - 内容 hash 未命中，但调用方传入 ``same_name_existing``（文件名闸发现的
+      同名 processed/进行中记录）→ 说明同名文件内容已变化，返回 ``duplicated``
+      （与改造前一致），避免把更新后的同名文件误报为已解析完成。
     - 命中时清理刚落盘的临时文件，避免残留。
-    - 解析失败/不支持类型时返回 None，降级放行（交入队流程处理）。
+    - 解析失败/不支持类型时：无同名记录则返回 None（降级放行）；
+      存在同名 processed/进行中记录则返回 ``duplicated``（无法证明内容未变化）。
     """
+
+    def _cleanup_temp_file() -> None:
+        """命中判重后清理刚落盘的临时文件。"""
+        try:
+            file_path.unlink()
+        except OSError:
+            logger.warning(
+                f"[Content Dedup] failed to remove temp file {file_path.name}"
+            )
+
+    def _build_same_name_duplicate() -> InsertResponse:
+        """同名记录存在但内容无法确认为一致时，按改造前语义返回 duplicated。"""
+        _cleanup_temp_file()
+        same_name_status = same_name_existing.get("status") or "unknown"
+        logger.info(
+            f"Same-name duplicate: '{file_path.name}' cannot be confirmed identical "
+            f"to the existing record (status: {same_name_status})"
+        )
+        return InsertResponse(
+            status="duplicated",
+            message=(
+                f"File '{file_path.name}' already exists in document storage "
+                f"(Status: {same_name_status}) but its content could not be "
+                f"confirmed identical. Delete the original document before "
+                f"re-uploading modified content."
+            ),
+            track_id=same_name_existing.get("track_id") or "",
+            doc_id=same_name_existing.get("doc_id") or "",
+            original_file_path=same_name_existing.get("file_path") or "",
+        )
+
     try:
         content = await _extract_text_from_file(file_path)
     except Exception as e:
         logger.warning(f"[Content Dedup] extraction failed for {file_path.name}: {e}")
-        return None
+        content = None
 
     if content is None:
+        # 无法提取文本（不支持/损坏/空内容）：若存在同名 processed/进行中记录，
+        # 无法证明内容未变化，按改造前语义返回 duplicated。
+        if same_name_existing is not None:
+            return _build_same_name_duplicate()
         return None
 
     sanitized = sanitize_text_for_encoding(content)
     content_doc_id = compute_mdhash_id(sanitized, prefix="doc-")
     existing = await rag.doc_status.get_by_id(content_doc_id)
-    if not existing:
-        return None
 
-    # FAILED 记录放行：解析失败的内容视同不存在，允许重新上传解析。
-    # 旧记录由入队流程覆盖（apipeline_enqueue_documents），不走删除分支以保留 LLM 缓存。
-    if existing.get("status") == DocStatus.FAILED:
+    if existing:
+        # FAILED 记录放行：解析失败的内容视同不存在，允许重新上传解析。
+        # 旧记录由入队流程覆盖（apipeline_enqueue_documents），不走删除分支以保留 LLM 缓存。
+        # 例外：文件名闸已发现同名 processed/进行中记录，且命中的 FAILED 属于其他文件名时，
+        # 无法证明同名旧内容未变化，按同名重复处理，避免同名两条记录并存。
+        if existing.get("status") == DocStatus.FAILED:
+            if (
+                same_name_existing is not None
+                and existing.get("file_path") != file_path.name
+            ):
+                return _build_same_name_duplicate()
+            logger.info(
+                f"Content duplicate check: existing doc {content_doc_id} is FAILED, "
+                f"allowing re-parse"
+            )
+            return None
+
+        # 命中：清理临时文件
+        _cleanup_temp_file()
+
+        existing_status = existing.get("status")
+        existing_track_id = existing.get("track_id") or ""
+        existing_file_path = existing.get("file_path") or ""
+        same_file = existing_file_path == file_path.name
+
+        if same_file and existing_status == DocStatus.PROCESSED:
+            logger.info(
+                f"Content duplicate check: doc {content_doc_id} for '{file_path.name}' "
+                f"is already processed"
+            )
+            return InsertResponse(
+                status="already_processed",
+                message=(
+                    f"File '{file_path.name}' has already been processed "
+                    f"(doc_id: {content_doc_id})."
+                ),
+                track_id=existing_track_id,
+                doc_id=content_doc_id,
+                original_file_path=existing_file_path,
+            )
+
+        if same_file and existing_status in (
+            DocStatus.PENDING,
+            DocStatus.PROCESSING,
+            DocStatus.PREPROCESSED,
+        ):
+            logger.info(
+                f"Content duplicate check: doc {content_doc_id} for '{file_path.name}' "
+                f"is still {existing_status}"
+            )
+            return InsertResponse(
+                status="processing",
+                message=(
+                    f"File '{file_path.name}' is still being processed "
+                    f"(status: {existing_status}, doc_id: {content_doc_id})."
+                ),
+                track_id=existing_track_id,
+                doc_id=content_doc_id,
+            )
+
         logger.info(
-            f"Content duplicate check: existing doc {content_doc_id} is FAILED, "
-            f"allowing re-parse"
+            f"Content duplicate detected: doc_id={content_doc_id} "
+            f"(existing file: {existing_file_path})"
         )
-        return None
+        return InsertResponse(
+            status="duplicated",
+            message=(
+                f"Content already exists (doc_id: {content_doc_id}, "
+                f"file: '{existing_file_path}'). Re-parsing identical content is "
+                f"not allowed; delete the original first."
+            ),
+            track_id=existing_track_id,
+            doc_id=content_doc_id,
+            original_file_path=existing_file_path,
+        )
 
-    # 命中：清理临时文件
-    try:
-        file_path.unlink()
-    except OSError:
-        logger.warning(f"[Content Dedup] failed to remove temp file {file_path.name}")
+    # 内容 hash 未命中：若文件名闸已发现同名 processed/进行中记录，
+    # 说明同名文件的内容已经变化，不能判为已处理（避免静默沿用旧内容）。
+    if same_name_existing is not None:
+        return _build_same_name_duplicate()
 
-    existing_track_id = existing.get("track_id") or ""
-    existing_file_path = existing.get("file_path") or ""
-    logger.info(
-        f"Content duplicate detected: doc_id={content_doc_id} "
-        f"(existing file: {existing_file_path})"
-    )
-    return InsertResponse(
-        status="duplicated",
-        message=(
-            f"Content already exists (doc_id: {content_doc_id}, "
-            f"file: '{existing_file_path}'). Re-parsing identical content is "
-            f"not allowed; delete the original first."
-        ),
-        track_id=existing_track_id,
-        doc_id=content_doc_id,
-        original_file_path=existing_file_path,
-    )
+    return None
 
 
 async def pipeline_enqueue_file(
@@ -2335,8 +2433,7 @@ async def background_delete_documents(
     # 超时后强制执行
     if not force_acquire:
         logger.warning(
-            f"Deletion wait timeout after {waited:.0f}s, "
-            "forcing pipeline acquisition"
+            f"Deletion wait timeout after {waited:.0f}s, forcing pipeline acquisition"
         )
         force_acquire = True
 
@@ -2699,6 +2796,10 @@ def create_document_routes(
             False,
             description="是否覆盖已有同名或同内容文档。默认 false：文件名重复返回 duplicated、内容重复产生 dup-FAILED 记录；设为 true 则删除同名或同内容的旧文档后再上传（覆盖“文件名不同但内容相同”的重新解析场景）。",
         ),
+        force: bool = Query(
+            False,
+            description="是否强制重新解析。默认 false：按已有文档状态返回 already_processed / processing / duplicated；设为 true 则跳过文件名与内容判重，并以 overwrite=true 重新入队（删除同内容旧文档后重新解析）。",
+        ),
     ):
         """
         Upload a file to the input directory and index it.
@@ -2717,25 +2818,31 @@ def create_document_routes(
         This endpoint handles two types of duplicate scenarios differently:
 
         1. **Filename Duplicate (Synchronous Detection)**:
-           - Detected immediately before file processing
-           - Returns `status="duplicated"` with the existing document's track_id
-           - Two cases:
-             - If filename exists in document storage: returns existing track_id
-             - If filename exists in file system only: returns empty track_id ("")
+           - Detected before file processing, but `processed` / 进行中记录会继续做
+             内容预检确认，避免同名文件内容更新后被误报为已解析。
+           - 按已有文档状态分流：
+             - `processed` 且内容一致 → `status="already_processed"`
+               （带 doc_id/track_id/original_file_path）
+             - `pending` / `processing` / `preprocessed` 且内容一致 →
+               `status="processing"`（带 doc_id/track_id）
+             - `failed` → 放行，允许重新解析
+             - 同名但内容已变化 → `status="duplicated"`（清理临时文件）
+             - 其它 → `status="duplicated"`
            - 当 overwrite=true 时，先删除已有文档再继续上传
 
         2. **Content Duplicate (Synchronous Detection)**:
            - Detected synchronously before enqueuing: the uploaded file is
              parsed to text, MD5-hashed into the document id, and looked up
              in doc_status.
-           - If the content already exists, returns `status=”duplicated”` with
-             `doc_id` and `original_file_path` of the existing document; the
-             just-landed temp file is removed. No parsing, no overwrite, and no
-             dup-FAILED record is created.
-           - Re-parsing identical content is not allowed (overwrite is ignored
-             for content duplicates). To force a re-parse, delete the original
-             document first (``DELETE /documents/delete_document``), then re-upload.
+           - 同名记录（existing.file_path == 本次文件名）按状态返回
+             `already_processed` / `processing` / 放行；`failed` 放行。
+           - 不同名记录视为真正的跨文件内容重复，返回 `status="duplicated"`
+             并带 `doc_id` 与 `original_file_path`，同时清理刚落盘的临时文件。
            - 解析失败或不支持的文件类型时降级放行，交由入队流程处理。
+
+        3. **Force Re-parse**:
+           - `force=true` 时跳过上述两道判重，并以 `overwrite=true` 重新入队，
+             复用入队流程的“删旧再入队”逻辑。
 
         **Note:**
         - Filename check and content check are both synchronous now.
@@ -2748,8 +2855,10 @@ def create_document_routes(
 
         Returns:
             InsertResponse: A response object containing the upload status and a message.
-                - status=”success”: File accepted and queued for processing
-                - status=”duplicated”: Filename OR content already exists.
+                - status="success": File accepted and queued for processing
+                - status="already_processed": 同名内容已解析完成
+                - status="processing": 同名内容正在处理中
+                - status="duplicated": Filename OR content already exists.
                   When it is a content duplicate, `doc_id` and `original_file_path`
                   are populated.
 
@@ -2792,44 +2901,58 @@ def create_document_routes(
                         f"File size not available in UploadFile for {safe_filename}, will check during streaming"
                     )
 
-            # Check if filename already exists in doc_status storage
+            # 文件名闸：force=true 时跳过全部判重，交由入队流程以 overwrite 覆盖旧记录。
+            # 同名 processed / 进行中记录不在此立即返回：必须继续做内容预检，
+            # 只有内容也相同时才判为 already_processed / processing；
+            # 同名但内容已变化时按改造前语义返回 duplicated，避免静默跳过新内容。
+            same_name_existing: Optional[dict[str, Any]] = None
+            # overwrite 模式下同名旧文档的删除延后到全部同步校验通过之后，
+            # 避免“先删旧文档、后续校验返回 duplicated”导致旧内容不可恢复丢失。
+            pending_overwrite_delete_id: Optional[str] = None
             existing_doc_data = await rag.doc_status.get_doc_by_file_path(safe_filename)
-            if existing_doc_data:
+            if existing_doc_data and not force:
                 # 使用 get_doc_id_by_file_path 获取正确的 doc_id
                 existing_doc_id = await rag.doc_status.get_doc_id_by_file_path(
                     safe_filename
                 )
+                existing_status = existing_doc_data.get("status")
+                # Use `or ""` to handle both missing key and None value (e.g., legacy rows without track_id)
+                existing_track_id = existing_doc_data.get("track_id") or ""
+                existing_file_path = existing_doc_data.get("file_path") or ""
                 # FAILED 记录放行：解析失败的内容视同不存在，允许重新上传解析，
                 # 不走删除分支（旧记录由入队流程覆盖，保留 LLM 缓存）。
-                if existing_doc_data.get("status") == DocStatus.FAILED:
+                if existing_status == DocStatus.FAILED:
                     logger.info(
                         f"File '{safe_filename}' exists with FAILED status, "
                         f"allowing re-upload for re-parsing"
                     )
                 elif overwrite:
-                    # 覆盖模式：删除已有文档，继续上传流程
-                    if existing_doc_id:
-                        logger.info(
-                            f"Overwrite mode: deleting existing document {existing_doc_id} "
-                            f"for file '{safe_filename}'"
-                        )
-                        try:
-                            await rag.adelete_by_doc_id(existing_doc_id)
-                        except Exception as del_err:
-                            logger.error(
-                                f"Failed to delete existing document {existing_doc_id}: {del_err}"
-                            )
-                            raise HTTPException(
-                                status_code=500,
-                                detail=f"Failed to delete existing document: {del_err}",
-                            )
+                    # 覆盖模式：记录待删除的同名旧文档，待落盘等同步校验全部通过后再删除
+                    pending_overwrite_delete_id = existing_doc_id or None
                     # 继续上传流程（orphan check 会清理磁盘上的旧文件）
+                elif existing_status == DocStatus.PROCESSED:
+                    # 延迟判定：内容预检确认内容一致后才返回 already_processed
+                    same_name_existing = {
+                        "status": existing_status,
+                        "track_id": existing_track_id,
+                        "file_path": existing_file_path,
+                        "doc_id": existing_doc_id or "",
+                    }
+                elif existing_status in (
+                    DocStatus.PENDING,
+                    DocStatus.PROCESSING,
+                    DocStatus.PREPROCESSED,
+                ):
+                    # 延迟判定：内容预检确认内容一致后才返回 processing
+                    same_name_existing = {
+                        "status": existing_status,
+                        "track_id": existing_track_id,
+                        "file_path": existing_file_path,
+                        "doc_id": existing_doc_id or "",
+                    }
                 else:
                     # 默认行为：返回 duplicated
-                    status = existing_doc_data.get("status", "unknown")
-                    # Use `or ""` to handle both missing key and None value (e.g., legacy rows without track_id)
-                    existing_track_id = existing_doc_data.get("track_id") or ""
-                    existing_file_path = existing_doc_data.get("file_path") or ""
+                    status = existing_status or "unknown"
                     return InsertResponse(
                         status="duplicated",
                         message=f"File '{safe_filename}' already exists in document storage (Status: {status}).",
@@ -2900,16 +3023,48 @@ def create_document_routes(
                 )
 
             # 内容重复同步预检：落盘后、入队前，按内容哈希查重。
-            # 内容已存在则一律返回 duplicated（忽略 overwrite，不覆盖、不重复解析）。
-            dup_response = await _check_content_duplicate(rag, file_path)
-            if dup_response is not None:
-                return dup_response
+            # force=true 时跳过预检，交由入队流程以 overwrite 覆盖旧记录。
+            # overwrite=true 同样跳过：其语义就是“删除同名或同内容旧文档后重新解析”，
+            # 由入队流程的 overwrite 逻辑统一删除同内容记录。
+            # same_name_existing 用于识别“同名但内容已变化”的覆盖上传。
+            if not force and not overwrite:
+                dup_response = await _check_content_duplicate(
+                    rag, file_path, same_name_existing=same_name_existing
+                )
+                if dup_response is not None:
+                    return dup_response
+
+            # 全部同步校验通过后才删除同名旧文档（overwrite 模式）
+            if pending_overwrite_delete_id:
+                logger.info(
+                    f"Overwrite mode: deleting existing document "
+                    f"{pending_overwrite_delete_id} for file '{safe_filename}'"
+                )
+                try:
+                    await rag.adelete_by_doc_id(pending_overwrite_delete_id)
+                except Exception as del_err:
+                    logger.error(
+                        f"Failed to delete existing document {pending_overwrite_delete_id}: {del_err}"
+                    )
+                    # 新文件尚未入队，清理刚落盘的文件，避免残留
+                    try:
+                        file_path.unlink()
+                    except OSError:
+                        pass
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Failed to delete existing document: {del_err}",
+                    )
 
             track_id = generate_track_id("upload")
 
-            # Add to background tasks and get track_id
+            # 入队：force=true 时以 overwrite 方式删除同内容旧文档后重新解析
             background_tasks.add_task(
-                pipeline_index_file, rag, file_path, track_id, overwrite
+                pipeline_index_file,
+                rag,
+                file_path,
+                track_id,
+                overwrite=overwrite or force,
             )
 
             return InsertResponse(

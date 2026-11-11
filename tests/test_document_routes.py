@@ -628,6 +628,32 @@ class TestCheckContentDuplicate:
         assert not p.exists()  # 临时文件已清理
 
     @pytest.mark.asyncio
+    async def test_different_name_failed_returns_none(self, tmp_path):
+        """不同名但记录为 failed 应放行：失败内容指纹无效，允许换名重传。"""
+        from unittest.mock import AsyncMock, MagicMock
+
+        from lightrag.api.routers.document_routes import _check_content_duplicate
+        from lightrag.utils import compute_mdhash_id, sanitize_text_for_encoding
+
+        text = "failed content re-uploaded with another name"
+        p = tmp_path / "retry.txt"
+        p.write_text(text, encoding="utf-8")
+        doc_id = compute_mdhash_id(sanitize_text_for_encoding(text), prefix="doc-")
+
+        existing = {
+            "id": doc_id,
+            "status": "failed",
+            "track_id": "old_track",
+            "file_path": "old_name.pdf",
+        }
+        mock_rag = MagicMock()
+        mock_rag.doc_status = AsyncMock()
+        mock_rag.doc_status.get_by_id = AsyncMock(return_value=existing)
+
+        assert await _check_content_duplicate(mock_rag, p) is None
+        assert p.exists(), "FAILED 放行时不应删除临时文件"
+
+    @pytest.mark.asyncio
     async def test_content_new_returns_none_and_keeps_file(self, tmp_path):
         """内容不存在应返回 None（放行），不删文件。"""
         from unittest.mock import AsyncMock, MagicMock

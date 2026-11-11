@@ -15,6 +15,7 @@ from ..base import (
     DocProcessingStatus,
     DocStatus,
     DocStatusStorage,
+    select_authoritative_doc,
 )
 from ..utils import logger, compute_mdhash_id
 from ..types import KnowledgeGraph, KnowledgeGraphNode, KnowledgeGraphEdge
@@ -720,7 +721,11 @@ class MongoDocStatusStorage(DocStatusStorage):
             Union[dict[str, Any], None]: Document data if found, None otherwise
             Returns the same format as get_by_id method
         """
-        return await self._data.find_one({"file_path": file_path})
+        cursor = self._data.find({"file_path": file_path})
+        # 同一 file_path 可能有多条记录，返回最权威的一条：
+        # processed > 进行中 > failed，同级取 updated_at 最新。
+        docs = [doc async for doc in cursor]
+        return select_authoritative_doc(docs)
 
     async def get_doc_id_by_file_path(self, file_path: str) -> Union[str, None]:
         """Get document ID by file path
@@ -731,10 +736,10 @@ class MongoDocStatusStorage(DocStatusStorage):
         Returns:
             Union[str, None]: Document ID if found, None otherwise
         """
-        result = await self._data.find_one({"file_path": file_path})
-        if result:
-            return str(result["_id"])
-        return None
+        cursor = self._data.find({"file_path": file_path})
+        docs = [doc async for doc in cursor]
+        chosen = select_authoritative_doc(docs)
+        return str(chosen["_id"]) if chosen is not None else None
 
 
 @final

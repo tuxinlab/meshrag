@@ -6,6 +6,7 @@ from lightrag.base import (
     DocProcessingStatus,
     DocStatus,
     DocStatusStorage,
+    select_authoritative_doc,
 )
 from lightrag.utils import (
     load_json,
@@ -372,12 +373,14 @@ class JsonDocStatusStorage(DocStatusStorage):
             raise StorageNotInitializedError("JsonDocStatusStorage")
 
         async with self._storage_lock:
-            for doc_id, doc_data in self._data.items():
-                if doc_data.get("file_path") == file_path:
-                    # Return complete document data, consistent with get_by_ids method
-                    return doc_data
-
-        return None
+            # 同一 file_path 可能存在多条记录（如两次解析失败/重复记录），
+            # 返回最权威的一条：processed > 进行中 > failed，同级取最新。
+            matches = [
+                doc_data
+                for doc_data in self._data.values()
+                if doc_data.get("file_path") == file_path
+            ]
+            return select_authoritative_doc(matches)
 
     async def get_doc_id_by_file_path(self, file_path: str) -> Union[str, None]:
         """Get document ID by file path
@@ -392,8 +395,19 @@ class JsonDocStatusStorage(DocStatusStorage):
             raise StorageNotInitializedError("JsonDocStatusStorage")
 
         async with self._storage_lock:
-            for doc_id, doc_data in self._data.items():
-                if doc_data.get("file_path") == file_path:
+            # 与 get_doc_by_file_path 保持同一权威记录口径
+            matches = [
+                (doc_id, doc_data)
+                for doc_id, doc_data in self._data.items()
+                if doc_data.get("file_path") == file_path
+            ]
+            authoritative = select_authoritative_doc(
+                [doc_data for _, doc_data in matches]
+            )
+            if authoritative is None:
+                return None
+            for doc_id, doc_data in matches:
+                if doc_data is authoritative:
                     return doc_id
 
         return None

@@ -33,6 +33,7 @@ from ..base import (
     DocProcessingStatus,
     DocStatus,
     DocStatusStorage,
+    select_authoritative_doc,
 )
 from ..exceptions import DataMigrationError, CircuitBreakerOpenError
 from ..namespace import NameSpace, is_namespace
@@ -246,8 +247,7 @@ class PostgreSQLCircuitBreaker:
                 self._state = CircuitState.OPEN
                 self._last_failure_time = time.monotonic()
                 logger.warning(
-                    "PostgreSQL, Circuit breaker: HALF_OPEN -> OPEN, "
-                    "probe failed: %r",
+                    "PostgreSQL, Circuit breaker: HALF_OPEN -> OPEN, probe failed: %r",
                     exc,
                 )
                 return
@@ -3777,41 +3777,47 @@ class PGDocStatusStorage(DocStatusStorage):
 
         if result is None or result == []:
             return None
-        else:
-            # Parse chunks_list JSON string back to list
-            chunks_list = result[0].get("chunks_list", [])
-            if isinstance(chunks_list, str):
-                try:
-                    chunks_list = json.loads(chunks_list)
-                except json.JSONDecodeError:
-                    chunks_list = []
 
-            # Parse metadata JSON string back to dict
-            metadata = result[0].get("metadata", {})
-            if isinstance(metadata, str):
-                try:
-                    metadata = json.loads(metadata)
-                except json.JSONDecodeError:
-                    metadata = {}
+        # 同一 file_path 可能有多条记录，取最权威的一条：
+        # processed > 进行中 > failed，同级取 updated_at 最新。
+        chosen = select_authoritative_doc(result)
+        if chosen is None:
+            return None
 
-            # Convert datetime objects to ISO format strings with timezone info
-            created_at = self._format_datetime_with_timezone(result[0]["created_at"])
-            updated_at = self._format_datetime_with_timezone(result[0]["updated_at"])
+        # Parse chunks_list JSON string back to list
+        chunks_list = chosen.get("chunks_list", [])
+        if isinstance(chunks_list, str):
+            try:
+                chunks_list = json.loads(chunks_list)
+            except json.JSONDecodeError:
+                chunks_list = []
 
-            return dict(
-                id=result[0]["id"],
-                content_length=result[0]["content_length"],
-                content_summary=result[0]["content_summary"],
-                status=result[0]["status"],
-                chunks_count=result[0]["chunks_count"],
-                created_at=created_at,
-                updated_at=updated_at,
-                file_path=result[0]["file_path"],
-                chunks_list=chunks_list,
-                metadata=metadata,
-                error_msg=result[0].get("error_msg"),
-                track_id=result[0].get("track_id"),
-            )
+        # Parse metadata JSON string back to dict
+        metadata = chosen.get("metadata", {})
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except json.JSONDecodeError:
+                metadata = {}
+
+        # Convert datetime objects to ISO format strings with timezone info
+        created_at = self._format_datetime_with_timezone(chosen["created_at"])
+        updated_at = self._format_datetime_with_timezone(chosen["updated_at"])
+
+        return dict(
+            id=chosen["id"],
+            content_length=chosen["content_length"],
+            content_summary=chosen["content_summary"],
+            status=chosen["status"],
+            chunks_count=chosen["chunks_count"],
+            created_at=created_at,
+            updated_at=updated_at,
+            file_path=chosen["file_path"],
+            chunks_list=chunks_list,
+            metadata=metadata,
+            error_msg=chosen.get("error_msg"),
+            track_id=chosen.get("track_id"),
+        )
 
     async def get_doc_id_by_file_path(self, file_path: str) -> Union[str, None]:
         """Get document ID by file path
@@ -3822,14 +3828,19 @@ class PGDocStatusStorage(DocStatusStorage):
         Returns:
             Union[str, None]: Document ID if found, None otherwise
         """
-        sql = "select id from LIGHTRAG_DOC_STATUS where workspace=$1 and file_path=$2"
+        # 查询权威排序所需字段，与 get_doc_by_file_path 保持同一口径
+        sql = (
+            "select id, status, updated_at from LIGHTRAG_DOC_STATUS "
+            "where workspace=$1 and file_path=$2"
+        )
         params = {"workspace": self.workspace, "file_path": file_path}
         result = await self.db.query(sql, list(params.values()), True)
 
         if result is None or result == []:
             return None
-        else:
-            return result[0]["id"]
+
+        chosen = select_authoritative_doc(result)
+        return chosen["id"] if chosen is not None else None
 
     async def get_status_counts(self) -> dict[str, int]:
         """Get counts of documents in each status"""

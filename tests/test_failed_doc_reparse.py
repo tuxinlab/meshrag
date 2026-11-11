@@ -324,6 +324,7 @@ def upload_endpoint(tmp_path):
             background_tasks=BackgroundTasks(),
             file=file,
             overwrite=False,
+            force=False,
         )
 
     return _call, mock_rag
@@ -350,19 +351,26 @@ async def test_upload_filename_failed_doc_allows_reupload(upload_endpoint):
 
 
 @pytest.mark.asyncio
-async def test_upload_filename_processed_doc_still_duplicated(upload_endpoint):
-    """同名 PROCESSED 文档重新上传仍应返回 duplicated（回归保护）。"""
+async def test_upload_filename_processed_doc_returns_already_processed(upload_endpoint):
+    """同名且内容一致 PROCESSED 文档重新上传应返回 already_processed。"""
+    from lightrag.utils import compute_mdhash_id, sanitize_text_for_encoding
+
     call_upload, mock_rag = upload_endpoint
-    mock_rag.doc_status.get_doc_by_file_path = AsyncMock(
-        return_value={
-            "id": "doc-y",
-            "status": "processed",
-            "track_id": "old_track",
-            "file_path": "doc.txt",
-        }
-    )
+    # 默认上传内容为 b"hello"，内容预检需要命中同一 doc_id 才会判为已处理
+    doc_id = compute_mdhash_id(sanitize_text_for_encoding("hello"), prefix="doc-")
+    existing = {
+        "id": doc_id,
+        "status": "processed",
+        "track_id": "old_track",
+        "file_path": "doc.txt",
+    }
+    mock_rag.doc_status.get_doc_by_file_path = AsyncMock(return_value=existing)
+    mock_rag.doc_status.get_doc_id_by_file_path = AsyncMock(return_value=doc_id)
+    mock_rag.doc_status.get_by_id = AsyncMock(return_value=existing)
 
     resp = await call_upload()
 
-    assert resp.status == "duplicated", "PROCESSED 同名文档仍应拦截"
+    assert resp.status == "already_processed", "PROCESSED 同名文档应返回已处理"
+    assert resp.doc_id == doc_id
+    assert resp.track_id == "old_track"
     mock_rag.adelete_by_doc_id.assert_not_called()

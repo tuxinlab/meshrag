@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from enum import Enum
 import os
 from dotenv import load_dotenv
@@ -723,6 +724,56 @@ class DocStatus(str, Enum):
     PREPROCESSED = "preprocessed"
     PROCESSED = "processed"
     FAILED = "failed"
+
+
+# 文档状态权威度：数值越小越权威。
+# processed > 进行中（processing/pending/preprocessed）> failed > 其它未知状态。
+_DOC_STATUS_AUTHORITY: dict[str, int] = {
+    DocStatus.PROCESSED.value: 0,
+    DocStatus.PROCESSING.value: 1,
+    DocStatus.PENDING.value: 1,
+    DocStatus.PREPROCESSED.value: 1,
+    DocStatus.FAILED.value: 2,
+}
+
+
+def get_doc_status_authority(status: DocStatus | str | None) -> int:
+    """返回文档状态的权威度（数值越小越权威）。"""
+    if isinstance(status, DocStatus):
+        status = status.value
+    return _DOC_STATUS_AUTHORITY.get(status, 3)
+
+
+def _parse_doc_updated_at(value: Any) -> float:
+    """把 updated_at 归一化为时间戳；缺失或无法解析时返回 0。"""
+    if isinstance(value, datetime):
+        return value.timestamp()
+    if isinstance(value, str):
+        normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+        try:
+            return datetime.fromisoformat(normalized).timestamp()
+        except ValueError:
+            return 0.0
+    return 0.0
+
+
+def select_authoritative_doc(
+    docs: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """从同一 file_path 的多条文档状态记录中选出最权威的一条。
+
+    优先级：processed > processing/pending/preprocessed > failed > 其它；
+    同级取 updated_at 最新。用于删除/重新上传后仍存在多条记录时的歧义消除。
+    """
+    if not docs:
+        return None
+    return min(
+        docs,
+        key=lambda doc: (
+            get_doc_status_authority(doc.get("status")),
+            -_parse_doc_updated_at(doc.get("updated_at")),
+        ),
+    )
 
 
 @dataclass
