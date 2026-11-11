@@ -53,6 +53,7 @@ from lightrag.api.routers.query_routes import create_query_routes
 from lightrag.api.routers.graph_routes import create_graph_routes
 from lightrag.api.routers.registry_routes import create_registry_routes
 from lightrag.api.registry import ExternalKBStore, ModelProfileStore
+from lightrag.api.routers.models_routes import create_models_routes
 from lightrag.api.routers.ollama_api import OllamaAPI
 from lightrag.api.rag_manager import RAGManager
 
@@ -285,6 +286,30 @@ def check_frontend_build():
         # If check fails, log warning but don't affect startup
         logger.warning(f"Failed to check frontend source freshness: {e}")
         return (True, False)  # Assume assets exist and up-to-date on error
+
+
+def get_embedding_provider_default_model(provider_func) -> str | None:
+    """读取 provider embedding 函数签名中的默认模型名（model / embed_model）。
+
+    用于 EMBEDDING_MODEL 未配置时，向 /models 报告实际使用的默认模型。
+    未找到字符串默认值时返回 None（例如 Azure 部署名、lollms 由服务端决定）。
+    """
+    import inspect
+
+    raw_func = (
+        provider_func.func
+        if isinstance(provider_func, EmbeddingFunc)
+        else provider_func
+    )
+    try:
+        params = inspect.signature(raw_func).parameters
+    except (TypeError, ValueError):
+        return None
+    for param_name in ("model", "embed_model"):
+        param = params.get(param_name)
+        if param is not None and isinstance(param.default, str):
+            return param.default
+    return None
 
 
 def create_app(args):
@@ -678,6 +703,7 @@ def create_app(args):
         provider_func = None
         provider_max_token_size = None
         provider_embedding_dim = None
+        provider_default_model = None
 
         try:
             if binding == "openai":
@@ -713,10 +739,16 @@ def create_app(args):
             if provider_func and isinstance(provider_func, EmbeddingFunc):
                 provider_max_token_size = provider_func.max_token_size
                 provider_embedding_dim = provider_func.embedding_dim
+                # 解析 provider 函数签名中的默认模型名（model / embed_model），
+                # 用于 /models 展示未配置 EMBEDDING_MODEL 时实际使用的模型。
+                provider_default_model = get_embedding_provider_default_model(
+                    provider_func
+                )
                 logger.debug(
                     f"Extracted from {binding} provider: "
                     f"max_token_size={provider_max_token_size}, "
-                    f"embedding_dim={provider_embedding_dim}"
+                    f"embedding_dim={provider_embedding_dim}, "
+                    f"default_model={provider_default_model}"
                 )
         except ImportError as e:
             logger.warning(f"Could not import provider function for {binding}: {e}")
@@ -874,17 +906,30 @@ def create_app(args):
                 raise Exception(f"Failed to import {binding} embedding: {e}")
 
         # Step 4: Wrap in EmbeddingFunc and return
+        # 注意：model_name 保持原语义（仅用于向量集合命名），实际生效模型单独记录，
+        # 避免改变 Postgres/Qdrant 的集合命名导致旧数据不可见。
+        effective_model = model or provider_default_model
+        if model:
+            model_source = "configured"
+        elif provider_default_model:
+            model_source = "provider_default"
+        else:
+            model_source = "unknown"
+
         embedding_func_instance = EmbeddingFunc(
             embedding_dim=final_embedding_dim,
             func=optimized_embedding_function,
             max_token_size=final_max_token_size,
             send_dimensions=False,  # Will be set later based on binding requirements
             model_name=model,
+            effective_model_name=effective_model,
+            model_source=model_source,
         )
 
         # Log final embedding configuration
         logger.info(
             f"Embedding config: binding={binding} model={model} "
+            f"effective_model={effective_model} ({model_source}) "
             f"embedding_dim={final_embedding_dim} max_token_size={final_max_token_size}"
         )
 
@@ -1178,6 +1223,8 @@ def create_app(args):
         )
     )
     app.include_router(create_graph_routes(rag_manager, api_key))
+    # 运行期实际使用的 LLM / 向量模型信息
+    app.include_router(create_models_routes(args, embedding_func, api_key))
 
     from pydantic import BaseModel
 

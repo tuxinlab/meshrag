@@ -446,6 +446,10 @@ class EmbeddingFunc:
     model_name: str | None = (
         None  # Model name for implementing workspace data isolation in vector DB
     )
+    # 运行期实际使用的模型名与来源，供 /models 接口展示；
+    # 不参与集合命名，避免改变现有向量库的命名语义。
+    effective_model_name: str | None = None
+    model_source: str | None = None  # configured / provider_default / unknown
 
     def __post_init__(self):
         """Unwrap nested EmbeddingFunc to prevent double wrapping issues.
