@@ -194,6 +194,28 @@ def _is_deletion_pause_exception(e: Exception) -> bool:
     return "High priority deletion" in msg or "deletion pending" in msg
 
 
+def _filter_graph_by_file_path(graph: KnowledgeGraph, file_path: str) -> KnowledgeGraph:
+    """对已构建的图做后置 file_path 过滤（用于不支持预过滤的存储后端）。
+
+    节点按 ``GRAPH_FIELD_SEP`` 精确匹配；边仅保留两端节点都被保留的项。
+    截断信息沿用存储层结果——因为过滤发生在截断之后，可能漏掉节点。
+    """
+
+    def match(props: dict) -> bool:
+        return file_path in str(props.get("file_path", "")).split(GRAPH_FIELD_SEP)
+
+    nodes = [node for node in graph.nodes if match(node.properties)]
+    kept_ids = {node.id for node in nodes}
+    edges = [
+        edge
+        for edge in graph.edges
+        if edge.source in kept_ids and edge.target in kept_ids
+    ]
+    graph.nodes = nodes
+    graph.edges = edges
+    return graph
+
+
 @final
 @dataclass
 class LightRAG:
@@ -1278,6 +1300,7 @@ class LightRAG:
         node_label: str,
         max_depth: int = 3,
         max_nodes: int = None,
+        file_path: str | None = None,
     ) -> KnowledgeGraph:
         """Get knowledge graph for a given label
 
@@ -1285,6 +1308,7 @@ class LightRAG:
             node_label (str): Label to get knowledge graph for
             max_depth (int): Maximum depth of graph
             max_nodes (int, optional): Maximum number of nodes to return. Defaults to self.max_graph_nodes.
+            file_path (str, optional): 仅返回与该文件相关的节点/边；为空表示整库
 
         Returns:
             KnowledgeGraph: Knowledge graph containing nodes and edges
@@ -1296,8 +1320,22 @@ class LightRAG:
             # Limit max_nodes to not exceed self.max_graph_nodes
             max_nodes = min(max_nodes, self.max_graph_nodes)
 
-        return await self.chunk_entity_relation_graph.get_knowledge_graph(
-            node_label, max_depth, max_nodes
+        storage = self.chunk_entity_relation_graph
+
+        # 非 NetworkX 存储：签名只有 3 个参数，不能传 file_path 关键字。
+        # 需要过滤时退化为"先取图、后置过滤"，可能因截断漏节点。
+        if not getattr(storage, "supports_file_path_filter", False):
+            result = await storage.get_knowledge_graph(node_label, max_depth, max_nodes)
+            if not file_path:
+                return result
+            logger.warning(
+                f"[{self.workspace}] Graph storage {type(storage).__name__} does not support "
+                f"file_path pre-filter; post-filtering may miss nodes due to max_nodes truncation"
+            )
+            return _filter_graph_by_file_path(result, file_path)
+
+        return await storage.get_knowledge_graph(
+            node_label, max_depth, max_nodes, file_path=file_path
         )
 
     def _get_storage_class(self, storage_name: str) -> Callable[..., Any]:

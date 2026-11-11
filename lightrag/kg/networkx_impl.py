@@ -6,6 +6,7 @@ from typing import final
 from lightrag.types import KnowledgeGraph, KnowledgeGraphNode, KnowledgeGraphEdge
 from lightrag.utils import logger
 from lightrag.base import BaseGraphStorage
+from lightrag.constants import GRAPH_FIELD_SEP
 import networkx as nx
 from .shared_storage import (
     get_namespace_lock,
@@ -24,6 +25,9 @@ load_dotenv(dotenv_path=".env", override=False)
 @final
 @dataclass
 class NetworkXStorage(BaseGraphStorage):
+    # 能力标记：支持在截断前按 file_path 预过滤（无类型注解，不成为 dataclass 字段）
+    supports_file_path_filter = True
+
     @staticmethod
     def load_nx_graph(file_name) -> nx.Graph:
         if os.path.exists(file_name):
@@ -300,6 +304,7 @@ class NetworkXStorage(BaseGraphStorage):
         node_label: str,
         max_depth: int = 3,
         max_nodes: int = None,
+        file_path: str | None = None,
     ) -> KnowledgeGraph:
         """
         Retrieve a connected subgraph of nodes where the label includes the specified `node_label`.
@@ -308,6 +313,7 @@ class NetworkXStorage(BaseGraphStorage):
             node_label: Label of the starting node，* means all nodes
             max_depth: Maximum depth of the subgraph, Defaults to 3
             max_nodes: Maxiumu nodes to return by BFS, Defaults to 1000
+            file_path: 仅返回与该文件相关的节点/边；为空表示整库
 
         Returns:
             KnowledgeGraph object containing nodes and edges, with an is_truncated flag
@@ -323,6 +329,17 @@ class NetworkXStorage(BaseGraphStorage):
         graph = await self._get_graph()
 
         result = KnowledgeGraph()
+
+        # 按文件预过滤：必须在截断逻辑之前裁剪，is_truncated 才会基于过滤后的节点数
+        if file_path:
+            allowed_nodes = [
+                node
+                for node, data in graph.nodes(data=True)
+                if file_path in str(data.get("file_path", "")).split(GRAPH_FIELD_SEP)
+            ]
+            # subgraph 自动保留两端均在允许集合内的边；
+            # 不要用边的 file_path 二次过滤（可能已被 MAX_FILE_PATHS 截断）
+            graph = graph.subgraph(allowed_nodes)
 
         # Handle special case for "*" label
         if node_label == "*":

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, Field
 
 from lightrag.utils import logger
+from lightrag.base import DocStatus
 from ..utils_api import get_combined_auth_dependency
 
 
@@ -196,6 +197,11 @@ def create_graph_routes(rag_manager, api_key: Optional[str] = None):
         label: str = Query(..., description="Label to get knowledge graph for"),
         max_depth: int = Query(3, description="Maximum depth of graph", ge=1),
         max_nodes: int = Query(1000, description="Maximum nodes to return", ge=1),
+        file_path: Optional[str] = Query(
+            None,
+            description="Only return entities/relations related to this file. "
+            "Omit or empty for the whole knowledge base.",
+        ),
     ):
         """
         Retrieve a connected subgraph of nodes where the label includes the specified label.
@@ -207,9 +213,11 @@ def create_graph_routes(rag_manager, api_key: Optional[str] = None):
             label (str): Label of the starting node
             max_depth (int, optional): Maximum depth of the subgraph,Defaults to 3
             max_nodes: Maxiumu nodes to return
+            file_path (str, optional): Only return entities/relations related to this file
 
         Returns:
-            Dict[str, List[str]]: Knowledge graph for label
+            KnowledgeGraph: Knowledge graph for label, plus file_paths of all
+            processed documents in this knowledge base
         """
         try:
             # Log the label parameter to check for leading spaces
@@ -222,16 +230,33 @@ def create_graph_routes(rag_manager, api_key: Optional[str] = None):
                 raise HTTPException(
                     status_code=404, detail=f"Knowledge base '{kb_id}' not found"
                 )
-            return await rag.get_knowledge_graph(
+
+            # 前端下拉用：全部已解析文档（不受本次过滤影响）
+            processed_docs = await rag.doc_status.get_docs_by_status(
+                DocStatus.PROCESSED
+            )
+            file_paths = sorted(
+                {
+                    doc.file_path
+                    for doc in processed_docs.values()
+                    if getattr(doc, "file_path", None)
+                }
+            )
+
+            result = await rag.get_knowledge_graph(
                 node_label=label,
                 max_depth=max_depth,
                 max_nodes=max_nodes,
+                file_path=file_path or None,
             )
+            result.file_paths = file_paths
+            return result
         except HTTPException:
             raise
         except Exception as e:
             logger.error(
-                f"Error getting knowledge graph from KB {kb_id} for label '{label}': {str(e)}"
+                f"Error getting knowledge graph from KB {kb_id} for label '{label}' "
+                f"(file_path={file_path!r}): {str(e)}"
             )
             logger.error(traceback.format_exc())
             raise HTTPException(

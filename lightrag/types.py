@@ -27,3 +27,5 @@ class KnowledgeGraph(BaseModel):
     nodes: list[KnowledgeGraphNode] = []
     edges: list[KnowledgeGraphEdge] = []
     is_truncated: bool = False
+    # 该知识库全部已解析文档的 file_path（前端文件筛选用）
+    file_paths: list[str] = []
