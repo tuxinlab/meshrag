@@ -8,12 +8,12 @@ A lightweight Knowledge Graph Retrieval-Augmented Generation system with multipl
 
 ```bash
 # Linux/MacOS
-git clone https://github.com/tuxin-labs/meshrag.git
+git clone https://github.com/tuxinlab/meshrag.git
 cd LightRAG
 ```
 ```powershell
 # Windows PowerShell
-git clone https://github.com/tuxin-labs/meshrag.git
+git clone https://github.com/tuxinlab/meshrag.git
 cd LightRAG
 ```
 

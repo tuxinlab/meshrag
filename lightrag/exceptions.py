@@ -70,7 +70,7 @@ class StorageNotInitializedError(RuntimeError):
             f"  rag = LightRAG(...)\n"
             f"  await rag.initialize_storages()  # Required - auto-initializes pipeline_status\n"
             f"\n"
-            f"See: https://github.com/tuxin-labs/meshrag#important-initialization-requirements"
+            f"See: https://github.com/tuxinlab/meshrag#important-initialization-requirements"
         )
 
 

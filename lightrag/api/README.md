@@ -28,7 +28,7 @@ uv tool install "lightrag-hku[api]"
 
 ```bash
 # Clone the repository
-git clone https://github.com/tuxin-labs/meshrag.git
+git clone https://github.com/tuxinlab/meshrag.git
 
 # Change to the repository directory
 cd lightrag
@@ -160,7 +160,7 @@ docker compose up
 # If you want the program to run in the background after startup, add the -d parameter at the end of the command.
 ```
 
-You can find the docker compose file in the repository root: [docker-compose.yml](../../docker-compose.yml). MeshRAG docker images are published at [ghcr.io/tuxin-labs/meshrag](https://github.com/tuxin-labs/meshrag/pkgs/container/meshrag). For more details about docker deployment, please refer to [DockerDeployment.md](./../../docs/DockerDeployment.md).
+You can find the docker compose file in the repository root: [docker-compose.yml](../../docker-compose.yml). MeshRAG docker images are published at [ghcr.io/tuxinlab/meshrag](https://github.com/tuxinlab/meshrag/pkgs/container/meshrag). For more details about docker deployment, please refer to [DockerDeployment.md](./../../docs/DockerDeployment.md).
 
 ### Nginx Reverse Proxy Configuration
 

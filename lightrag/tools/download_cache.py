@@ -137,7 +137,7 @@ Examples:
   # Download specific models only
   meshrag-download-cache --models gpt-4o-mini gpt-4
 
-For more information, visit: https://github.com/tuxin-labs/meshrag
+For more information, visit: https://github.com/tuxinlab/meshrag
         """,
     )
 

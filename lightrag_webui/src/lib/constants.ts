@@ -88,5 +88,5 @@ export const supportedFileTypes = {
 export const SiteInfo = {
   name: 'MeshRAG',
   home: '/',
-  github: 'https://github.com/tuxin-labs/meshrag'
+  github: 'https://github.com/tuxinlab/meshrag'
 }

@@ -28,7 +28,7 @@ uv tool install "lightrag-hku[api]"
 
 ```bash
 # 克隆仓库
-git clone https://github.com/tuxin-labs/meshrag.git
+git clone https://github.com/tuxinlab/meshrag.git
 
 # 进入仓库目录
 cd lightrag
@@ -159,7 +159,7 @@ docker compose up
 # 如果希望启动后让程序退到后台运行，需要在命令的最后添加 -d 参数
 ```
 
-> docker compose 文件位于仓库根目录：[docker-compose.yml](../../docker-compose.yml) 。MeshRAG 镜像发布于 [ghcr.io/tuxin-labs/meshrag](https://github.com/tuxin-labs/meshrag/pkgs/container/meshrag)。如需获取更多关于docker部署的信息，请参阅 [DockerDeployment.md](./../../docs/DockerDeployment.md).
+> docker compose 文件位于仓库根目录：[docker-compose.yml](../../docker-compose.yml) 。MeshRAG 镜像发布于 [ghcr.io/tuxinlab/meshrag](https://github.com/tuxinlab/meshrag/pkgs/container/meshrag)。如需获取更多关于docker部署的信息，请参阅 [DockerDeployment.md](./../../docs/DockerDeployment.md).
 
 ### Nginx 反向代理配置
 

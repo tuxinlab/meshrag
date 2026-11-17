@@ -51,7 +51,7 @@ when an individual is officially representing the community in public spaces.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-**[GitHub Issues](https://github.com/tuxin-labs/meshrag/issues)** (use a
+**[GitHub Issues](https://github.com/tuxinlab/meshrag/issues)** (use a
 private security advisory for sensitive matters). All complaints will be
 reviewed and investigated promptly and fairly.
 

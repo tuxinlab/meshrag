@@ -31,7 +31,7 @@ pip install meshrag[api]
 **Command:**
 ```bash
 # Clone the repository
-git clone https://github.com/tuxin-labs/meshrag.git
+git clone https://github.com/tuxinlab/meshrag.git
 cd LightRAG
 
 # Install in editable mode (no frontend build required yet)
@@ -61,7 +61,7 @@ cd ..
 **Command:**
 ```bash
 # Clone the repository
-git clone https://github.com/tuxin-labs/meshrag.git
+git clone https://github.com/tuxinlab/meshrag.git
 cd LightRAG
 
 # ⚠️ MUST build frontend FIRST

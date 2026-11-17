@@ -126,7 +126,7 @@ The viewer is particularly useful for:
 
 ## Support
 
-- GitHub Issues: [MeshRAG Repository](https://github.com/tuxin-labs/meshrag)
+- GitHub Issues: [MeshRAG Repository](https://github.com/tuxinlab/meshrag)
 - Documentation: [LightRAG Docs](https://URL-to-docs)
 
 ## License

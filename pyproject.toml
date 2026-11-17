@@ -158,10 +158,10 @@ meshrag-download-cache = "lightrag.tools.download_cache:main"
 meshrag-clean-llmqc = "lightrag.tools.clean_llm_query_cache:main"
 
 [project.urls]
-Homepage = "https://github.com/tuxin-labs/meshrag"
-Documentation = "https://github.com/tuxin-labs/meshrag"
-Repository = "https://github.com/tuxin-labs/meshrag"
-"Bug Tracker" = "https://github.com/tuxin-labs/meshrag/issues"
+Homepage = "https://github.com/tuxinlab/meshrag"
+Documentation = "https://github.com/tuxinlab/meshrag"
+Repository = "https://github.com/tuxinlab/meshrag"
+"Bug Tracker" = "https://github.com/tuxinlab/meshrag/issues"
 
 [tool.setuptools.packages.find]
 include = ["lightrag*"]

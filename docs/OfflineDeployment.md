@@ -312,6 +312,6 @@ mkdir -p ~/my_tiktoken_cache
 
 If you encounter issues not covered in this guide:
 
-1. Check the [GitHub Issues](https://github.com/tuxin-labs/meshrag/issues)
+1. Check the [GitHub Issues](https://github.com/tuxinlab/meshrag/issues)
 2. Review the [project documentation](../README.md)
 3. Create a new issue with your offline deployment details

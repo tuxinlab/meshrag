@@ -109,7 +109,7 @@ async def check_lightrag_setup(rag_instance: LightRAG, verbose: bool = False) ->
         print("\n📝 To fix, run this initialization sequence:\n")
         print("  await rag.initialize_storages()")
         print(
-            "\n📚 Documentation: https://github.com/tuxin-labs/meshrag#important-initialization-requirements"
+            "\n📚 Documentation: https://github.com/tuxinlab/meshrag#important-initialization-requirements"
         )
 
         if warnings and verbose:

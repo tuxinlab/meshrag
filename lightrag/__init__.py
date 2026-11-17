@@ -4,4 +4,4 @@ from .lightrag import LightRAG as LightRAG, QueryParam as QueryParam
 # v1.4.11) is recorded in CHANGELOG.md and the README files.
 __version__ = "1.3.1"
 __author__ = "Zirui Guo"
-__url__ = "https://github.com/tuxin-labs/meshrag"
+__url__ = "https://github.com/tuxinlab/meshrag"

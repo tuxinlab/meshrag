@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-IMAGE_NAME="ghcr.io/tuxin-labs/meshrag"
+IMAGE_NAME="ghcr.io/tuxinlab/meshrag"
 DOCKERFILE="Dockerfile"
 TAG="latest"
 
