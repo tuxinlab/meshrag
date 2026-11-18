@@ -4,6 +4,30 @@ All notable changes to MeshRAG are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.2] — 2026-11-18
+
+Security patch release clearing all 115 Dependabot dependency alerts on the
+default branch (7 critical, 56 high, 43 moderate, 9 low).
+
+### Security
+
+- Upgraded vulnerable locked dependencies to first patched releases:
+  `certifi`, `pillow` 13, `pypdf` 6.21.4, `filelock`, `nltk`, `pyasn1`,
+  `soupsieve`, `virtualenv`, `dnspython`, `opentelemetry-api`, `setuptools`,
+  plus `docling` 2.135 → 2.150 to unlock the pillow cap.
+- Removed unused `python-jose` (critical, no upstream fix); JWT auth already
+  uses `PyJWT`, which now carries the `[crypto]` extra for asymmetric
+  algorithms.
+- Raised `requires-python` to `>=3.11.5` so resolution no longer keeps
+  vulnerable legacy pins for EOL Python 3.10; `Dockerfile.backend` moved to
+  Python 3.12.
+- Floor `pypdf` at `>=6.21.4,<7` in `pyproject.toml` and
+  `requirements-offline.txt`.
+- Restored Dependabot config (`.github/dependabot.yml`) and enabled
+  automated security-fix PRs; `SECURITY.md` now documents the two known
+  advisories without upstream fixes (`diskcache`, `ragas` — evaluation
+  extra only).
+
 ## [1.3.1] — 2026-11-11
 
 WebUI adaptation for the v1.3.0 backend changes.
