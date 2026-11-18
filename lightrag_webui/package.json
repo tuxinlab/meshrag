@@ -105,7 +105,7 @@
     "globals": "^17.3.0",
     "graphology-types": "^0.24.8",
     "prettier": "^3.8.1",
-    "prettier-plugin-tailwindcss": "^0.7.2",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript-eslint": "^8.56.1",
     "tailwindcss": "^4.2.1",
     "tailwindcss-animate": "^1.0.7",
