@@ -24,13 +24,13 @@ dependencies = [
     "aiohttp",
     "configparser",
     "google-api-core>=2.0.0,<3.0.0",
-    "google-genai>=1.0.0,<2.0.0",
+    "google-genai>=1.0.0,<4.0.0",
     "json_repair",
     "nano-vectordb",
     "networkx",
     "numpy>=1.24.0,<3.0.0",
     "packaging",
-    "pandas>=2.0.0,<2.4.0",
+    "pandas>=2.0.0,<3.2.0",
     "pipmaster",
     "pydantic",
     "pypinyin",
@@ -59,7 +59,7 @@ api = [
     "networkx",
     "numpy>=1.24.0,<3.0.0",
     "openai>=2.0.0,<3.0.0",
-    "pandas>=2.0.0,<2.4.0",
+    "pandas>=2.0.0,<3.2.0",
     "pipmaster",
     "pydantic",
     "pypinyin",
@@ -69,7 +69,7 @@ api = [
     "tiktoken",
     "xlsxwriter>=3.1.0",
     "google-api-core>=2.0.0,<3.0.0",
-    "google-genai>=1.0.0,<2.0.0",
+    "google-genai>=1.0.0,<4.0.0",
     # API-specific dependencies
     "aiofiles",
     "ascii_colors",
@@ -87,8 +87,8 @@ api = [
     "gunicorn",
     # Document processing dependencies (required for API document upload functionality)
     "openpyxl>=3.0.0,<4.0.0",      # XLSX processing
-    "pycryptodome>=3.0.0,<4.0.0",  # PDF encryption support
-    "pypdf>=6.21.4,<7",             # PDF processing (6.21.4 patches the GHSA PDF-parsing series; v7 deferred)
+    "pycryptodome>=3.0.0,<5.0.0",  # PDF encryption support
+    "pypdf>=6.21.4,<8",             # PDF processing (6.21.4 patches the GHSA PDF-parsing series; v7 deferred)
     "python-docx>=0.8.11,<2.0.0",  # DOCX processing
     "python-pptx>=0.6.21,<2.0.0",  # PPTX processing
 ]
@@ -103,9 +103,9 @@ docling = [
 # Offline deployment dependencies (layered design for flexibility)
 offline-storage = [
     # Storage backend dependencies
-    "redis>=5.0.0,<8.0.0",
+    "redis>=5.0.0,<9.0.0",
     "neo4j>=5.0.0,<7.0.0",
-    "pymilvus>=2.6.15,<3.0.0",
+    "pymilvus>=2.6.15,<4.0.0",
     "pymongo>=4.0.0,<5.0.0",
     "asyncpg>=0.31.0,<1.0.0",
     "pgvector>=0.4.2,<1.0.0",
@@ -123,7 +123,7 @@ offline-llm = [
     "llama-index>=0.14.0,<1.0.0",  # Updated to ensure compatibility with openai 2.x
     "llama-index-llms-openai>=0.6.12",  # Explicitly require version that supports openai 2.x
     "google-api-core>=2.0.0,<3.0.0",
-    "google-genai>=1.0.0,<2.0.0",
+    "google-genai>=1.0.0,<4.0.0",
 ]
 
 offline = [
