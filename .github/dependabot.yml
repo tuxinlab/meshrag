@@ -1,0 +1,89 @@
+version: 2
+
+updates:
+  # Python dependencies (pyproject.toml + uv.lock)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      # Core runtime libs that move together without behavior surprises
+      python-runtime:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "llama-index*"
+          - "docling*"
+          - "langfuse"
+          - "openai"
+          - "anthropic"
+      # Heavier framework families updated in isolation so breakage is easy to attribute
+      llama-index:
+        patterns:
+          - "llama-index*"
+      docling:
+        patterns:
+          - "docling*"
+
+  # Web UI dependencies (Bun + Vite)
+  - package-ecosystem: "bun"
+    directory: "/lightrag_webui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "react-router*"
+      ui-components:
+        patterns:
+          - "radix-ui"
+          - "@radix-ui/*"
+          - "lucide-react"
+          - "sonner"
+          - "tailwind-merge"
+          - "class-variance-authority"
+          - "clsx"
+      graph-viz:
+        patterns:
+          - "sigma"
+          - "graphology"
+          - "@react-sigma/*"
+      content-rendering:
+        patterns:
+          - "react-markdown"
+          - "remark-*"
+          - "rehype-*"
+          - "highlight.js"
+          - "dompurify"
+      build-tools:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "typescript"
+          - "eslint"
+          - "eslint-*"
+          - "prettier"
+          - "vitest"
+          - "@vitest/*"
+          - "postcss"
+          - "tailwindcss"
+          - "@tailwindcss/*"
+
+  # GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

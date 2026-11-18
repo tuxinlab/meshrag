@@ -11,7 +11,7 @@ authors = [
 description = "MeshRAG: Multi-Knowledge-Base Graph RAG, based on LightRAG"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.11.5"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
@@ -80,8 +80,7 @@ api = [
     "jiter",
     "bcrypt>=4.0.0",
     "psutil",
-    "PyJWT>=2.15.0,<3.0.0",
-    "python-jose[cryptography]",
+    "PyJWT[crypto]>=2.15.0,<3.0.0",
     "python-multipart>=0.0.31",
     "pytz",
     "uvicorn",
@@ -89,7 +88,7 @@ api = [
     # Document processing dependencies (required for API document upload functionality)
     "openpyxl>=3.0.0,<4.0.0",      # XLSX processing
     "pycryptodome>=3.0.0,<4.0.0",  # PDF encryption support
-    "pypdf>=6.19.0",                # PDF processing
+    "pypdf>=6.21.4,<7",             # PDF processing (6.21.4 patches the GHSA PDF-parsing series; v7 deferred)
     "python-docx>=0.8.11,<2.0.0",  # DOCX processing
     "python-pptx>=0.6.21,<2.0.0",  # PPTX processing
 ]
@@ -190,4 +189,9 @@ target-version = "py310"
 [tool.uv]
 # zhipuai declares pyjwt>=2.8.0,<2.9.0 but PyJWT <2.15 carries token-forgery and
 # DoS advisories; override so the whole resolution (incl. zhipuai) uses the patched line.
-override-dependencies = ["pyjwt>=2.15.0,<3.0.0"]
+# langfuse 3.x caps packaging<26, but virtualenv>=21.14.9 (GHSA-394h/c978/6w3r series)
+# requires packaging>=26.3; packaging's public API is stable across the line.
+override-dependencies = [
+    "pyjwt[crypto]>=2.15.0,<3.0.0",
+    "packaging>=26.3",
+]

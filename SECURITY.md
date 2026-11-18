@@ -8,6 +8,18 @@ The LightRAG team will send a response indicating the next steps in handling you
 
 Report security bugs in third-party modules to the person or team maintaining the module.
 
+### Known Unresolved Advisories
+
+The following advisories have no upstream fix. They affect only the optional
+`evaluation` extra (RAG quality-assessment tooling), not the `meshrag` core or
+the API server runtime — install `meshrag[evaluation]` only in trusted
+environments.
+
+| Package | Advisory | Severity | Status |
+| ------- | -------- | -------- | ------ |
+| `diskcache` 5.6.3 | [GHSA-w8v5-vhqr-4h9v](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v) — unsafe pickle deserialization | Medium | No fix released; pulled in via `ragas` -> `instructor` (evaluation extra only) |
+| `ragas` 0.4.3 | [GHSA-95ww-475f-pr4f](https://github.com/advisories/GHSA-95ww-475f-pr4f) — SSRF in multi-modal faithfulness module | Low | No fix released; direct dependency of the evaluation extra only |
+
 ### Supported Versions
 
 The following versions currently being supported with security updates.
